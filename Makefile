@@ -1,6 +1,6 @@
 CXX=gcc
 CXXFLAGS=-g -std=c11 -Wall -pedantic 
-BIN=echoserver
+BIN=final
 
 SRC=$(wildcard *.c)
 OBJ=$(SRC:%.cpp=%.o)
