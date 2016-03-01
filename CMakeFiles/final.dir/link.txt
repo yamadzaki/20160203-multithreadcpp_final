@@ -1,1 +1,0 @@
-/usr/bin/cc      CMakeFiles/final.dir/final.c.o  -o final -rdynamic 
