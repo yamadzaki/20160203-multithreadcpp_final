@@ -343,6 +343,10 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    if (0 != daemon(0, 0)) {
+        handle_error("Error in daemon\n");
+    }
+
     switch ((pid = fork())) {
     case 0:
         close(sv[0]);
