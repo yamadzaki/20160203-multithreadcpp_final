@@ -159,7 +159,10 @@ ssize_t sock_fd_read(int sock, void *buf, ssize_t bufsize, int *fd)
 
 const char *make_answer(char *Buffer, char *dir) {
     static const char *GET = "GET ";
-    static const char *not_found = "HTTP/1.0 404 NOT FOUND\r\nContent-Type: text/html\r\n\r\n";
+    static const char *not_found = "HTTP/1.0 404 NOT FOUND\r\n"
+                                   "Content-length: 0\r\n"
+                                   "Connection: close\r\n"
+                                   "Content-Type: text/html\r\n\r\n";
     const char *answer = "WTF???\n";
     
     if (0 == strncmp(GET, Buffer, strlen(GET))) {
