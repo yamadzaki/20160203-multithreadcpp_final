@@ -173,6 +173,43 @@ const char *make_answer(char *Buffer, char *dir) {
         
         printf("GET file: %s\n", filename);
 
+
+        FILE *fs = fopen(filename, "r");
+        if (NULL == fs) {
+            printf("Can't open file\n");
+        } else {
+
+            if (-1 == fseek(fs, 0L, SEEK_END)) {
+                handle_error("Error in fseek\n");
+            }
+            long fsize = ftell(fs);
+            printf("Size of file: %ld\n", fsize);
+
+            fseek(fs, 0L, SEEK_SET);
+
+            char *FileBuf = (char*) malloc(fsize);
+            if (NULL == FileBuf) {
+                 handle_error("Error in malloc\n");
+            }
+
+            size_t t = fread(FileBuf, 1, fsize, fs);
+            if (t != fsize) {
+                handle_error("Problem with fread()\n");
+            }
+
+            static const char* templ = "HTTP/1.0 200 OK\r\n"
+                           "Content-length: %ld\r\n"
+                           "Connection: close\r\n"
+                           "Content-Type: text/html\r\n"
+                           "\r\n"
+                           "%s";
+
+            static char tmp[1000000];
+            sprintf(tmp, templ, fsize, FileBuf);
+
+            free(FileBuf);
+            answer = tmp;
+        }
     }
 
     return answer;
