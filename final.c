@@ -24,23 +24,23 @@ static const char not_found[] = "HTTP/1.0 404 NOT FOUND\r\nContent-Type: text/ht
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
-void getoptions(int argc, char **argv, int *port, char *ip, char *dir) {
+void getoptions(int argc, char **argv, int *port, char **ip, char **dir) {
     // parse parameters
     int opt = 0;
     *port = 0;
-    ip = NULL;
-    dir = NULL;
+    *ip = NULL;
+    *dir = NULL;
 
     while ((opt = getopt(argc, argv, "hpd")) != -1) {
         switch (opt) {
             case 'h':
-                ip = argv[optind];
+                *ip = argv[optind];
                 break;
             case 'p':
                 *port = atoi(argv[optind]);
                 break;
             case 'd':
-                dir = argv[optind];
+                *dir = argv[optind];
                 break;
             default:
                 fprintf(stderr, "Usage: %s -h <ip> -p <port> -d <dir>\n", argv[0]);
@@ -157,7 +157,29 @@ ssize_t sock_fd_read(int sock, void *buf, ssize_t bufsize, int *fd)
 }
 
 
-void child(int sock)
+const char *make_answer(char *Buffer, char *dir) {
+    static const char *GET = "GET ";
+    static const char *not_found = "HTTP/1.0 404 NOT FOUND\r\nContent-Type: text/html\r\n\r\n";
+    const char *answer = "WTF???\n";
+    
+    if (0 == strncmp(GET, Buffer, strlen(GET))) {
+        answer = not_found;
+        char filename[1024];
+
+        strcpy(filename, dir);
+        int n = strcspn(Buffer + strlen(GET), "? \n\r");
+        strncat(filename, Buffer + strlen(GET), n);
+        filename[n + strlen(dir)] = '\0';
+        
+        printf("GET file: %s\n", filename);
+
+    }
+
+    return answer;
+}
+
+
+void child(int sock, char *dir)
 {
     int SlaveSocket;
     char    buf[16];
@@ -171,10 +193,12 @@ void child(int sock)
 
         if (SlaveSocket != -1) {
             printf("Child recieve SlaveSocket: %d\n", SlaveSocket);
+            printf("Child recieve dir: %s\n", dir);
             
             while(1) {
-                char Buffer[5] = {0, 0, 0, 0, 0};
-                ssize_t msgsize = recv(SlaveSocket, Buffer, 4, MSG_NOSIGNAL);
+                char Buffer[1024] = {0, 0, 0, 0, 0};
+                ssize_t msgsize = recv(SlaveSocket, Buffer, (1024-1), MSG_NOSIGNAL);
+                Buffer[msgsize] = '\0';
 
                 if (msgsize == -1) { // error
                     handle_error("Error in recv()\n");
@@ -193,9 +217,12 @@ void child(int sock)
 
                 printf("%s", Buffer);
 
-                static const char *not_found = "HTTP/1.0 404 NOT FOUND\r\nContent-Type: text/html\r\n\r\n";
+                const char *answer = make_answer(Buffer, dir);
 
-                if (send(SlaveSocket, not_found, strlen(not_found), MSG_NOSIGNAL) == -1) {
+
+                printf("%s", answer);
+
+                if (send(SlaveSocket, answer, strlen(answer), MSG_NOSIGNAL) == -1) {
                     handle_error("Problems with send()\n");
                 }
 
@@ -266,7 +293,7 @@ int main(int argc, char **argv) {
     char *ip = NULL;
     char *dir = NULL;
 
-    getoptions(argc, argv, &port, ip, dir);
+    getoptions(argc, argv, &port, &ip, &dir);
     printf("ip=%s; port=%d; dir=%s\n", ip, port, dir);
 
 //---------------
@@ -282,7 +309,7 @@ int main(int argc, char **argv) {
     switch ((pid = fork())) {
     case 0:
         close(sv[0]);
-        child(sv[1]);
+        child(sv[1], dir);
         break;
     case -1:
         perror("fork");
